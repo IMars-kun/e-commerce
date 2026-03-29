@@ -5,7 +5,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
 }
 
 datasource db {
@@ -13,3 +12,179 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =============
+// USER & AUTH
+// =============
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          Role     @default("USER")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // RELATIONS
+  account     Account[]
+  sessions    Session[]
+  orders      Order[]
+  reviews     Review[]
+  addresses   Address[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.text
+  access_token      String? @db.text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relations(field: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  status        OrderStatus @default("PENDING")
+  totalPrice    Float
+  shippingFee   Float       @default(0)
+  note          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // RELATIONS
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     OrderItem[]
+  payment   Payment?
+  address   Address?      @relation(fields: [addressId], references: [id])
+  addressId String?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  price     Int     // harga saat transaksi (snapshot)
+
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// =============
+// Payment
+// =============
+
+model Payment {
+  id            String   @id @default(cuid())
+  method        String?     // "bank_transfer", "qris", "shopee_pay"
+  status        PaymentStatus @default("UNPAID")
+  amount        Int
+  snapToken     String?     // Midtrans snap token
+  transactionId String?     // dari Midtrans
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  
+  orderId String @unique
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@map("payments")
+}
+
+// ===============
+// Address
+// ===============
+
+model Address {
+  id            String   @id @default(cuid())
+  label         String   // "Rumah", "Kantor", dll
+  recipient     String
+  phone         String
+  street        String   @db.text
+  city          String
+  province      String
+  postalCode    String
+  isDefault     Boolean  @default(false)
+  
+
+  // RELATIONS
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@map("addresses")
+}
+
+// ================
+// REVIEW
+// ================
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId]) // 1 user hanya bisa review 1x per produk
+  @@map("reviews")
+}
+
+// ===============
+// ENUMS
+// ===============
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+  REFUNDED
+}
