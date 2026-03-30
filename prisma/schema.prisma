@@ -23,7 +23,7 @@ model User {
   emailVerified DateTime?
   password      String?
   image         String?
-  role          Role     @default("USER")
+  role          Role     @default(USER)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -61,7 +61,7 @@ model Session {
   userId       String
   expires      DateTime
 
-  user User @relations(field: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -69,9 +69,9 @@ model Session {
 model Order {
   id            String      @id @default(cuid())
   orderNumber   String      @unique
-  status        OrderStatus @default("PENDING")
-  totalPrice    Float
-  shippingFee   Float       @default(0)
+  status        OrderStatus @default(PENDING)
+  totalPrice    Int
+  shippingFee   Int         @default(0)
   note          String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -108,7 +108,7 @@ model OrderItem {
 model Payment {
   id            String   @id @default(cuid())
   method        String?     // "bank_transfer", "qris", "shopee_pay"
-  status        PaymentStatus @default("UNPAID")
+  status        PaymentStatus @default(UNPAID)
   amount        Int
   snapToken     String?     // Midtrans snap token
   transactionId String?     // dari Midtrans
@@ -152,7 +152,7 @@ model Address {
 model Review {
   id        String   @id @default(cuid())
   rating    Int      // 1-5
-  comment   String?  @db.Text
+  comment   String?  @db.text
   createdAt DateTime @default(now())
 
   userId    String
